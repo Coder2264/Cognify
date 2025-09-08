@@ -31,7 +31,7 @@ def chunk_text(text: str, chunk_size: int =1000, overlap: int = 200) -> list:
 
 def get_embeddings(chunks: list[str], batch_size: int = 32) -> list[list[float]]:
     """
-    Get embeddings for text chunks using Voyage API.
+    Get embeddings for text chunks.
     Uses batching for efficiency.
     """
     embeddings = []
