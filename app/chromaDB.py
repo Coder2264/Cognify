@@ -1,4 +1,3 @@
-# services/vector_store.py
 import os
 import chromadb
 from chromadb.config import Settings
@@ -9,7 +8,7 @@ CHROMA_PORT = os.getenv("CHROMA_PORT")
 client = chromadb.HttpClient(
     host=CHROMA_HOST,
     port=int(CHROMA_PORT),
-    settings=Settings(anonymized_telemetry=False)
+    settings=Settings(anonymized_telemetry=False, api_version="v2")
 )
 
 # Create / get collection
