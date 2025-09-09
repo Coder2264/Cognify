@@ -18,3 +18,11 @@ collection = client.get_or_create_collection(
     metadata={"hnsw:space": "cosine"}  # cosine similarity
 )
 
+def reset_collection():
+    client.delete_collection(name="documents")
+    global collection
+    collection = client.get_or_create_collection(
+        name="documents",
+        metadata={"hnsw:space": "cosine"}
+    )
+    return collection

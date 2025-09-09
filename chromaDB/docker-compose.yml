@@ -1,0 +1,11 @@
+services:
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:latest
+    container_name: chromadb
+    ports:
+      - "8003:8000"   # expose Chroma REST API at host:8003
+    environment:
+      - IS_PERSISTENT=TRUE     # enables persistence on disk
+      - ALLOW_RESET=TRUE       # allows wiping/reset via API (dev only)
+    volumes:
+      - ./chroma:/data  # mount local folder into container
