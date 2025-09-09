@@ -40,6 +40,45 @@ Cognify is an advanced AI-powered chatbot that leverages **Retrieval-Augmented G
 
 ---
 
+## Design
+![HLD](https://res.cloudinary.com/dcij8s42h/image/upload/v1757420636/Screenshot_2025-09-09_at_5.53.41_PM_etmus0.png)
+
+
+
+# ⚙️ Processing Pipeline
+
+### **Document Ingestion**
+
+* **Upload API → Extract Text → Chunk → Embed → Store in DB**
+* **Extraction**: `pdfplumber` (handles layouts, no image support)
+* **Cleaning**: Normalizes text, removes headers/footers
+* **Chunking**: `RecursiveCharacterTextSplitter` (chunk size = 1000, overlap = 200)
+* **Storage**: Embeddings stored in ChromaDB
+
+### **Query Handling**
+
+1. Receive user query
+2. Generate query embedding
+3. Search ChromaDB for top relevant chunks
+4. Feed chunks + query into LLM
+5. Return contextual response
+
+---
+
+# 🔮 Future Roadmap
+
+* 📄 **UI Enhancements**: Show uploaded PDFs in sidebar cards with delete option
+* 🗨️ **Contextual Chat**: Pass previous conversations to LLM for follow-ups
+* 🔐 **Authentication**: Multi-user accounts with private data & chats
+* 💾 **Persistence**: Store chats within user accounts
+* 🧵 **Threaded Sessions**: Independent document sets per chat thread
+* 🖼️ **Image Support**: Extract text from images in PDFs
+* 📑 **Multi-format Support**: `.docx`, `.xlsx`, `.pptx`, etc.
+* 🧠 **Semantic Chunking**: Domain-specific chunking for legal/scientific docs
+
+
+---
+
 ## ⚡ How It Works
 
 1. User uploads a PDF document.
@@ -56,3 +95,8 @@ Cognify is an advanced AI-powered chatbot that leverages **Retrieval-Augmented G
 * Maintain conversational context for more natural interactions.
 * Scalable architecture for handling multiple users and documents.
 
+
+
+
+## UI
+![Image](https://res.cloudinary.com/dcij8s42h/image/upload/v1757420376/Screenshot_2025-09-09_at_1.30.02_PM_iy4wbq.png)
