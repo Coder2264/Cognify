@@ -1,6 +1,10 @@
 import streamlit as st
 import requests
 import os
+import time
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Load backend API URL from env
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
@@ -18,7 +22,7 @@ if "chat_history" not in st.session_state:
         if res.status_code == 200:
             chats = res.json().get("chats", [])
             # API gives reverse order → reverse again to chronological
-            chats.reverse()
+            
             for entry in chats:
                 st.session_state.chat_history.append((entry["role"], entry["message"]))
     except Exception as e:
@@ -70,12 +74,34 @@ with col2:
 # --- Handle send ---
 if send_clicked and user_query:
     payload = {"query": user_query}
-    res = requests.post(f"{BACKEND_URL}/api/v1/query", json=payload)
+    try:
+        res = requests.post(f"{BACKEND_URL}/api/v1/query", json=payload)
+        if res.status_code == 200:
+            data = res.json()
+            request_id = data.get("request_id")
 
-    if res.status_code == 200:
-        answer = res.json().get("answer", "No response")
-        st.session_state.chat_history.append(("user", user_query))
-        st.session_state.chat_history.append(("assistant", answer))
-        st.rerun()  # refresh UI with new messages
-    else:
-        st.error("Backend error")
+            # Add user message immediately
+            st.session_state.chat_history.append(("user", user_query))
+
+            # Poll for response
+            answer = None
+            with st.spinner("🤖 Thinking..."):
+                for _ in range(60):  # poll up to ~60s
+                    poll = requests.get(f"{BACKEND_URL}/api/v1/query-result/{request_id}")
+                    if poll.status_code == 200:
+                        poll_data = poll.json()
+                        if poll_data["status"] == "done":
+                            answer = poll_data["answer"]
+                            break
+                    time.sleep(1)  # wait 1s before next poll
+
+            if answer:
+                st.session_state.chat_history.append(("assistant", answer))
+            else:
+                st.session_state.chat_history.append(("assistant", "⚠️ Timeout, no response yet."))
+
+            st.rerun()
+        else:
+            st.error("Backend error")
+    except Exception as e:
+        st.error(f"Request failed: {e}")

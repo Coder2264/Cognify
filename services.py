@@ -73,14 +73,32 @@ def clear_redis():
     print("Redis database cleared.")
 
 def save_to_redis(message: str, role: str):
-    global chatId
-    chatId+=1
-    redis_client.hset(f"chat:{chatId}", mapping={"role": role, "message": message})
-    redis_client.expire(f"chat:{chatId}", 36000)  # Expire after 10 hours
+    # Get a persistent, incrementing chat ID
+    chat_id = redis_client.incr("chat_counter")
+
+    # Save the message with role in a hash (so you can fetch by ID)
+    redis_client.hset(f"chat:{chat_id}", mapping={"role": role, "message": message})
+
+    # Also push to a list to maintain order
+    redis_client.rpush("chat_history", chat_id)
+
+    return chat_id
+
 
 def get_chat_history():
     history = []
-    for key in redis_client.scan_iter("chat:*"):
-        entry = redis_client.hgetall(key)
-        history.append({"role": entry["role"], "message": entry["message"]})
+    # Get IDs in order
+    chat_ids = redis_client.lrange("chat_history", 0, -1)
+    for chat_id in chat_ids:
+        entry = redis_client.hgetall(f"chat:{chat_id}")
+        if entry:
+            history.append({"role": entry["role"], "message": entry["message"], "id": int(chat_id)})
     return history
+
+
+def get_response_by_id(request_id: int):
+    key = f"chat:{request_id}"
+    if redis_client.exists(key):
+        entry = redis_client.hgetall(key)
+        return entry.get("message", None)
+    return None

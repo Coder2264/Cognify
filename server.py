@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel
 import llm
 import services
@@ -58,24 +58,30 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @app.post("/api/v1/query")
-async def make_query(request: QueryRequest):
-    # Get embedding for the query
-    query_embedding = services.get_embeddings([request.query])[0]
+async def make_query(request: QueryRequest, background_tasks: BackgroundTasks):
 
-    #Perform similarity search
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=request.top_k,
-    )
+    request_id= services.save_to_redis(request.query, "user")
 
-    #Call LLM with context
-    response= llm.call_llm(request.query, results["documents"][0])
+    def process_query():
+        query_embedding = services.get_embeddings([request.query])[0]
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=request.top_k,
+        )
+        response = llm.call_llm(request.query, results["documents"][0])
+        services.save_to_redis(response, "assistant")
 
-    #Save query and response to Redis
-    services.save_to_redis(request.query, "user")
-    services.save_to_redis(response, "assistant")
+    background_tasks.add_task(process_query)
 
-    return {"query": request.query, "response": response}
+    return {"status": "processing", "request_id": request_id}
+
+
+@app.get("/api/v1/query-result/{request_id}")
+async def get_query_result(request_id: int):
+    response= services.get_response_by_id(request_id+1)
+    if response is None:
+        return {"status": "processing", "answer": None}
+    return {"status": "done", "answer": response}
 
 @app.get("/api/v1/files")
 async def list_files():
