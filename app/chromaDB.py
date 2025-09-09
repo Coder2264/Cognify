@@ -1,4 +1,3 @@
-# services/vector_store.py
 import os
 import chromadb
 from chromadb.config import Settings
