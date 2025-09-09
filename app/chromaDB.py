@@ -8,7 +8,7 @@ CHROMA_PORT = os.getenv("CHROMA_PORT")
 client = chromadb.HttpClient(
     host=CHROMA_HOST,
     port=int(CHROMA_PORT),
-    settings=Settings(anonymized_telemetry=False, api_version="v2")
+    settings=Settings(anonymized_telemetry=False)
 )
 
 # Create / get collection

@@ -1,12 +1,4 @@
 services:
-  embedding-service:
-    build: ./embedding-service
-    container_name: embedding-service
-    ports:
-      - "8005:8005"
-    depends_on:
-      - redis
-    restart: unless-stopped
 
   backend:
     build: ./app
@@ -16,9 +8,19 @@ services:
     depends_on:
       - redis
       - chromadb
+      - embedding-service
     restart: unless-stopped
     env_file:
-      - ./.env
+      - ./.env_deploy
+
+  embedding-service:
+    build: ./embedding-service
+    container_name: embedding-service
+    ports:
+      - "8005:8000"
+    depends_on:
+      - redis
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine

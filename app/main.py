@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 import llm
 import services
@@ -63,13 +63,42 @@ async def make_query(request: QueryRequest, background_tasks: BackgroundTasks):
     request_id= services.save_to_redis(request.query, "user")
 
     def process_query():
-        query_embedding = services.get_embeddings([request.query])[0]
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            n_results=request.top_k,
-        )
-        response = llm.call_llm(request.query, results["documents"][0])
-        services.save_to_redis(response, "assistant")
+        try:
+            # Step 1: Generate embeddings
+            query_embedding = services.get_embeddings([request.query])[0]
+
+            # Step 2: Perform similarity search
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=request.top_k,
+            )
+
+            # Step 3: Call the LLM with retrieved context
+            try:
+                response = llm.call_llm(request.query, results["documents"][0])
+            except Exception as e:
+                # Save error message in Redis to keep chat consistent
+                error_msg = "⚠️ LLM service is currently unavailable. Please try again later."
+                services.save_to_redis(error_msg, "assistant")
+
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"LLM error: {str(e)}"
+                )
+
+            # Step 4: Save successful response
+            services.save_to_redis(response, "assistant")
+            return {"answer": response}
+
+        except Exception as e:
+            # Save generic error state in Redis too
+            error_msg = "❌ An error occurred while processing your query."
+            services.save_to_redis(error_msg, "assistant")
+
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error: {str(e)}"
+            )
 
     background_tasks.add_task(process_query)
 
